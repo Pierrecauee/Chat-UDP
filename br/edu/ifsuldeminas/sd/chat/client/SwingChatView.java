@@ -13,85 +13,61 @@ import java.awt.event.*;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 
-/**
- * Interface gráfica Swing para o Chat UDP — tema hacker/terminal.
- * Implementa MessageContainer para exibir mensagens recebidas.
- */
 public class SwingChatView extends JFrame implements MessageContainer {
 
-    // ── Paleta hacker ─────────────────────────────────────────────────────────
-    private static final Color BG_BLACK      = new Color(0, 0, 0);
-    private static final Color BG_PANEL      = new Color(5, 10, 5);
-    private static final Color BG_INPUT      = new Color(0, 15, 0);
-    private static final Color GREEN_BRIGHT  = new Color(0, 255, 70);
-    private static final Color GREEN_DIM     = new Color(0, 160, 40);
-    private static final Color GREEN_DARK    = new Color(0, 80, 20);
-    private static final Color GREEN_GHOST   = new Color(0, 50, 10);
-    private static final Color AMBER         = new Color(255, 176, 0);
-    private static final Color RED_ERR       = new Color(255, 50, 50);
-    private static final Color BORDER_GREEN  = new Color(0, 100, 20);
+    private static final Color BG_BLACK     = new Color(0, 0, 0);
+    private static final Color BG_PANEL     = new Color(0, 8, 0);
+    private static final Color BG_INPUT     = new Color(0, 15, 0);
+    private static final Color GREEN_BRIGHT = new Color(0, 255, 70);
+    private static final Color GREEN_MED    = new Color(0, 180, 40);
+    private static final Color GREEN_DIM    = new Color(0, 110, 25);
+    private static final Color GREEN_DARK   = new Color(0, 55, 10);
+    private static final Color GREEN_LIME   = new Color(180, 255, 100);
+    private static final Color RED_ERR      = new Color(255, 60, 60);
 
-    // ── Fontes mono ───────────────────────────────────────────────────────────
     private static final Font FONT_MONO_LG = new Font("Monospaced", Font.PLAIN, 13);
     private static final Font FONT_MONO_SM = new Font("Monospaced", Font.PLAIN, 11);
     private static final Font FONT_MONO_BD = new Font("Monospaced", Font.BOLD,  13);
-    private static final Font FONT_TITLE   = new Font("Monospaced", Font.BOLD,  15);
 
-    // ── Componentes de conexão ────────────────────────────────────────────────
-    private JTextField fieldLocalPort;
-    private JTextField fieldRemoteIP;
-    private JTextField fieldRemotePort;
-    private JTextField fieldUsername;
-    private JButton    btnConnect;
-    private JLabel     lblStatus;
-
-    // ── Componentes de chat ───────────────────────────────────────────────────
-    private JTextPane  chatPane;
+    private JTextField     fieldLocalPort, fieldRemoteIP, fieldRemotePort, fieldUsername;
+    private JButton        btnConnect;
+    private JLabel         lblStatus;
+    private JTextPane      chatPane;
     private StyledDocument chatDoc;
-    private JTextField fieldMessage;
-    private JButton    btnSend;
+    private JTextField     fieldMessage;
+    private JButton        btnSend;
 
-    // ── Estado ────────────────────────────────────────────────────────────────
     private Sender  sender;
     private String  username;
     private boolean connected = false;
 
-    private static final DateTimeFormatter TIME_FMT =
-            DateTimeFormatter.ofPattern("HH:mm:ss");
-
-    // ─────────────────────────────────────────────────────────────────────────
+    private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("HH:mm:ss");
 
     public SwingChatView() {
-        super("[ UDP-CHAT // IFSULDEMINAS // SECURE TERMINAL ]");
+        super("[ UDP-CHAT // IFSULDEMINAS ]");
         buildUI();
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setSize(820, 640);
         setMinimumSize(new Dimension(660, 480));
         setLocationRelativeTo(null);
-        // Ícone verde no título
         setVisible(true);
     }
-
-    // ── Construção da UI ──────────────────────────────────────────────────────
 
     private void buildUI() {
         getContentPane().setBackground(BG_BLACK);
         setLayout(new BorderLayout(0, 0));
-
-        add(buildTopBar(),    BorderLayout.NORTH);
-        add(buildChatArea(),  BorderLayout.CENTER);
-        add(buildInputBar(),  BorderLayout.SOUTH);
+        add(buildTopBar(),   BorderLayout.NORTH);
+        add(buildChatArea(), BorderLayout.CENTER);
+        add(buildInputBar(), BorderLayout.SOUTH);
     }
 
-    /** Barra superior com ASCII art + campos de conexão */
     private JPanel buildTopBar() {
-        JPanel outer = new JPanel(new BorderLayout(0, 0));
+        JPanel outer = new JPanel(new BorderLayout());
         outer.setBackground(BG_BLACK);
         outer.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, GREEN_DARK));
 
-        // ── ASCII header ──
         JLabel ascii = new JLabel(
-            "<html><pre style='color:#00ff46;font-family:Monospaced;font-size:11px;'>" +
+            "<html><pre style='color:#00ff46; background:#000000; font-family:Monospaced; font-size:11px; margin:0;'>" +
             " ██╗   ██╗██████╗ ██████╗      ██████╗██╗  ██╗ █████╗ ████████╗\n" +
             " ██║   ██║██╔══██╗██╔══██╗    ██╔════╝██║  ██║██╔══██╗╚══██╔══╝\n" +
             " ██║   ██║██║  ██║██████╔╝    ██║     ███████║███████║   ██║   \n" +
@@ -100,31 +76,32 @@ public class SwingChatView extends JFrame implements MessageContainer {
             "  ╚═════╝ ╚═════╝ ╚═╝          ╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝  \n" +
             "</pre></html>"
         );
+        ascii.setBackground(BG_BLACK);
+        ascii.setOpaque(true);
         ascii.setBorder(new EmptyBorder(6, 10, 0, 10));
 
-        // ── Status line ──
         lblStatus = new JLabel("[ STATUS: OFFLINE ]");
         lblStatus.setFont(FONT_MONO_SM);
         lblStatus.setForeground(RED_ERR);
+        lblStatus.setBackground(BG_BLACK);
+        lblStatus.setOpaque(true);
 
-        JPanel statusBar = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 2));
-        statusBar.setOpaque(false);
+        JPanel statusBar = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 4));
+        statusBar.setBackground(BG_BLACK);
         statusBar.add(lblStatus);
 
-        // ── Formulário de conexão ──
         JPanel form = buildConnectionForm();
 
-        JPanel topContent = new JPanel(new BorderLayout(0, 0));
-        topContent.setBackground(BG_BLACK);
-        topContent.add(ascii,     BorderLayout.NORTH);
-        topContent.add(statusBar, BorderLayout.CENTER);
-        topContent.add(form,      BorderLayout.SOUTH);
+        JPanel top = new JPanel(new BorderLayout());
+        top.setBackground(BG_BLACK);
+        top.add(ascii,     BorderLayout.NORTH);
+        top.add(statusBar, BorderLayout.CENTER);
+        top.add(form,      BorderLayout.SOUTH);
 
-        outer.add(topContent, BorderLayout.CENTER);
+        outer.add(top, BorderLayout.CENTER);
         return outer;
     }
 
-    /** Campos de conexão estilo terminal */
     private JPanel buildConnectionForm() {
         JPanel form = new JPanel(new GridLayout(2, 4, 6, 4));
         form.setBackground(BG_PANEL);
@@ -137,39 +114,37 @@ public class SwingChatView extends JFrame implements MessageContainer {
         fieldRemoteIP   = hackerField("IP_ALVO");
         fieldRemotePort = hackerField("PORTA_ALVO");
 
+        form.add(hackerLabel("> IDENTIDADE:"));  form.add(fieldUsername);
+        form.add(hackerLabel("> PORTA_LOCAL:")); form.add(fieldLocalPort);
+        form.add(hackerLabel("> IP_ALVO:"));     form.add(fieldRemoteIP);
+        form.add(hackerLabel("> PORTA_ALVO:")); form.add(fieldRemotePort);
+
         btnConnect = new JButton(">> CONECTAR");
-        btnConnect.setBackground(GREEN_DARK);
+        btnConnect.setBackground(BG_BLACK);
         btnConnect.setForeground(GREEN_BRIGHT);
         btnConnect.setFont(FONT_MONO_BD);
         btnConnect.setFocusPainted(false);
-        btnConnect.setBorderPainted(true);
-        btnConnect.setBorder(BorderFactory.createLineBorder(GREEN_DIM, 1));
+        btnConnect.setBorder(BorderFactory.createLineBorder(GREEN_MED, 1));
         btnConnect.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         btnConnect.addMouseListener(new MouseAdapter() {
-            public void mouseEntered(MouseEvent e) { btnConnect.setBackground(new Color(0,120,30)); }
-            public void mouseExited(MouseEvent e)  { btnConnect.setBackground(GREEN_DARK); }
+            public void mouseEntered(MouseEvent e) { btnConnect.setBackground(GREEN_DARK); }
+            public void mouseExited(MouseEvent e)  { btnConnect.setBackground(BG_BLACK); }
         });
         btnConnect.addActionListener(e -> handleConnect());
 
-        form.add(hackerLabel("> IDENTIDADE:")); form.add(fieldUsername);
-        form.add(hackerLabel("> PORTA_LOCAL:")); form.add(fieldLocalPort);
-        form.add(hackerLabel("> IP_ALVO:"));    form.add(fieldRemoteIP);
-        form.add(hackerLabel("> PORTA_ALVO:")); form.add(fieldRemotePort);
+        JPanel btnPanel = new JPanel(new BorderLayout());
+        btnPanel.setBackground(BG_PANEL);
+        btnPanel.setBorder(new EmptyBorder(8, 6, 8, 0));
+        btnPanel.add(btnConnect, BorderLayout.CENTER);
 
         JPanel wrapper = new JPanel(new BorderLayout(6, 0));
         wrapper.setBackground(BG_PANEL);
-        wrapper.add(form, BorderLayout.CENTER);
-
-        JPanel btnPanel = new JPanel(new BorderLayout());
-        btnPanel.setBackground(BG_PANEL);
-        btnPanel.setBorder(new EmptyBorder(8, 0, 8, 12));
-        btnPanel.add(btnConnect, BorderLayout.CENTER);
+        wrapper.add(form,     BorderLayout.CENTER);
         wrapper.add(btnPanel, BorderLayout.EAST);
 
         return wrapper;
     }
 
-    /** Área de chat estilo terminal com scrollbar verde */
     private JScrollPane buildChatArea() {
         chatPane = new JTextPane();
         chatPane.setEditable(false);
@@ -183,32 +158,30 @@ public class SwingChatView extends JFrame implements MessageContainer {
         scroll.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, GREEN_DARK));
         scroll.setBackground(BG_BLACK);
         scroll.getViewport().setBackground(BG_BLACK);
-
-        // Scrollbar estilizada
+        scroll.getVerticalScrollBar().setBackground(BG_BLACK);
         scroll.getVerticalScrollBar().setUI(new javax.swing.plaf.basic.BasicScrollBarUI() {
             protected void configureScrollBarColors() {
-                thumbColor    = GREEN_DARK;
-                trackColor    = BG_BLACK;
+                thumbColor = GREEN_DARK;
+                trackColor = BG_BLACK;
             }
-            protected JButton createDecreaseButton(int o) { return zeroButton(); }
-            protected JButton createIncreaseButton(int o) { return zeroButton(); }
-            private JButton zeroButton() {
+            protected JButton createDecreaseButton(int o) { return zeroBtn(); }
+            protected JButton createIncreaseButton(int o) { return zeroBtn(); }
+            private JButton zeroBtn() {
                 JButton b = new JButton();
                 b.setPreferredSize(new Dimension(0, 0));
                 return b;
             }
         });
 
-        appendSystemMessage("SISTEMA INICIALIZADO. AGUARDANDO CONEXÃO...");
+        appendSystemMessage("SISTEMA INICIALIZADO. AGUARDANDO CONEXAO...");
         appendSystemMessage("Preencha os campos acima e clique em >> CONECTAR");
 
         return scroll;
     }
 
-    /** Barra de input estilo prompt de terminal */
     private JPanel buildInputBar() {
         JPanel bar = new JPanel(new BorderLayout(6, 0));
-        bar.setBackground(BG_PANEL);
+        bar.setBackground(BG_BLACK);
         bar.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createMatteBorder(1, 0, 0, 0, GREEN_DARK),
                 new EmptyBorder(8, 12, 8, 12)));
@@ -216,9 +189,11 @@ public class SwingChatView extends JFrame implements MessageContainer {
         JLabel prompt = new JLabel("root@udpchat:~$ ");
         prompt.setFont(FONT_MONO_BD);
         prompt.setForeground(GREEN_BRIGHT);
+        prompt.setBackground(BG_BLACK);
+        prompt.setOpaque(true);
 
         fieldMessage = new JTextField();
-        fieldMessage.setBackground(BG_INPUT);
+        fieldMessage.setBackground(BG_BLACK);
         fieldMessage.setForeground(GREEN_BRIGHT);
         fieldMessage.setCaretColor(GREEN_BRIGHT);
         fieldMessage.setFont(FONT_MONO_LG);
@@ -246,15 +221,13 @@ public class SwingChatView extends JFrame implements MessageContainer {
         return bar;
     }
 
-    // ── Lógica de conexão ─────────────────────────────────────────────────────
-
     private void handleConnect() {
         if (connected) return;
 
-        String name      = getFieldValue(fieldUsername,   "IDENTIDADE");
-        String remoteIP  = getFieldValue(fieldRemoteIP,   "IP_ALVO");
-        String localTxt  = getFieldValue(fieldLocalPort,  "PORTA_LOCAL");
-        String remoteTxt = getFieldValue(fieldRemotePort, "PORTA_ALVO");
+        String name      = getVal(fieldUsername,   "IDENTIDADE");
+        String remoteIP  = getVal(fieldRemoteIP,   "IP_ALVO");
+        String localTxt  = getVal(fieldLocalPort,  "PORTA_LOCAL");
+        String remoteTxt = getVal(fieldRemotePort, "PORTA_ALVO");
 
         if (name.isEmpty() || remoteIP.isEmpty() || localTxt.isEmpty() || remoteTxt.isEmpty()) {
             appendErrorMessage("ERRO: Todos os campos devem ser preenchidos.");
@@ -266,17 +239,16 @@ public class SwingChatView extends JFrame implements MessageContainer {
             localPort  = Integer.parseInt(localTxt);
             remotePort = Integer.parseInt(remoteTxt);
         } catch (NumberFormatException ex) {
-            appendErrorMessage("ERRO: As portas precisam ser números inteiros.");
+            appendErrorMessage("ERRO: As portas precisam ser numeros inteiros.");
             return;
         }
 
         username = name;
-        appendSystemMessage("Iniciando conexão com " + remoteIP + ":" + remoteTxt + "...");
+        appendSystemMessage("Iniciando conexao com " + remoteIP + ":" + remoteTxt + "...");
 
         try {
             sender = ChatFactory.build(remoteIP, remotePort, localPort, this);
             connected = true;
-
             SwingUtilities.invokeLater(() -> {
                 lblStatus.setText("[ STATUS: ONLINE // USER: " + username.toUpperCase() + " ]");
                 lblStatus.setForeground(GREEN_BRIGHT);
@@ -289,15 +261,12 @@ public class SwingChatView extends JFrame implements MessageContainer {
                 fieldMessage.setEnabled(true);
                 btnSend.setEnabled(true);
                 fieldMessage.requestFocus();
-                appendSystemMessage("CONEXÃO ESTABELECIDA. CANAL SEGURO ATIVO.");
+                appendSystemMessage("CONEXAO ESTABELECIDA. CANAL ATIVO.");
             });
-
         } catch (ChatException ex) {
-            appendErrorMessage("FALHA NA CONEXÃO: " + ex.getCause().getMessage());
+            appendErrorMessage("FALHA NA CONEXAO: " + ex.getCause().getMessage());
         }
     }
-
-    // ── Lógica de envio ───────────────────────────────────────────────────────
 
     private void handleSend() {
         if (!connected || sender == null) return;
@@ -314,80 +283,65 @@ public class SwingChatView extends JFrame implements MessageContainer {
         }
     }
 
-    // ── MessageContainer ──────────────────────────────────────────────────────
-
     @Override
     public void newMessage(String message) {
         if (message == null || message.trim().isEmpty()) return;
         SwingUtilities.invokeLater(() -> {
             String[] parts = message.split(MessageContainer.FROM, 2);
             if (parts.length == 2) {
-                String text   = parts[0].trim();
-                String sender = parts[1].trim();
-                if (!text.isEmpty())
-                    appendReceivedMessage(sender, text);
+                String text = parts[0].trim();
+                String from = parts[1].trim();
+                if (!text.isEmpty()) appendReceivedMessage(from, text);
             }
         });
     }
 
-    // ── Renderização de mensagens ─────────────────────────────────────────────
-
     private void appendSentMessage(String from, String text) {
         try {
-            String time = LocalTime.now().format(TIME_FMT);
-            String line = "[" + time + "] <" + from.toUpperCase() + "> " + text;
-
-            SimpleAttributeSet style = new SimpleAttributeSet();
-            StyleConstants.setForeground(style, GREEN_BRIGHT);
-            StyleConstants.setFontFamily(style, "Monospaced");
-            StyleConstants.setFontSize(style, 13);
-
-            chatDoc.insertString(chatDoc.getLength(), line + "\n", style);
+            SimpleAttributeSet s = new SimpleAttributeSet();
+            StyleConstants.setForeground(s, GREEN_BRIGHT);
+            StyleConstants.setFontFamily(s, "Monospaced");
+            StyleConstants.setFontSize(s, 13);
+            String line = "[" + LocalTime.now().format(TIME_FMT) + "] <" + from.toUpperCase() + "> " + text;
+            chatDoc.insertString(chatDoc.getLength(), line + "\n", s);
             chatPane.setCaretPosition(chatDoc.getLength());
         } catch (BadLocationException e) { e.printStackTrace(); }
     }
 
     private void appendReceivedMessage(String from, String text) {
         try {
-            String time = LocalTime.now().format(TIME_FMT);
-            String line = "[" + time + "] <" + from.toUpperCase() + "> " + text;
-
-            SimpleAttributeSet style = new SimpleAttributeSet();
-            StyleConstants.setForeground(style, AMBER);
-            StyleConstants.setFontFamily(style, "Monospaced");
-            StyleConstants.setFontSize(style, 13);
-
-            chatDoc.insertString(chatDoc.getLength(), line + "\n", style);
+            SimpleAttributeSet s = new SimpleAttributeSet();
+            StyleConstants.setForeground(s, GREEN_LIME);
+            StyleConstants.setFontFamily(s, "Monospaced");
+            StyleConstants.setFontSize(s, 13);
+            String line = "[" + LocalTime.now().format(TIME_FMT) + "] <" + from.toUpperCase() + "> " + text;
+            chatDoc.insertString(chatDoc.getLength(), line + "\n", s);
             chatPane.setCaretPosition(chatDoc.getLength());
         } catch (BadLocationException e) { e.printStackTrace(); }
     }
 
     private void appendSystemMessage(String text) {
         try {
-            SimpleAttributeSet style = new SimpleAttributeSet();
-            StyleConstants.setForeground(style, GREEN_DARK);
-            StyleConstants.setFontFamily(style, "Monospaced");
-            StyleConstants.setFontSize(style, 12);
-
-            chatDoc.insertString(chatDoc.getLength(), "// " + text + "\n", style);
+            SimpleAttributeSet s = new SimpleAttributeSet();
+            StyleConstants.setForeground(s, GREEN_DIM);
+            StyleConstants.setFontFamily(s, "Monospaced");
+            StyleConstants.setFontSize(s, 12);
+            chatDoc.insertString(chatDoc.getLength(), "// " + text + "\n", s);
             chatPane.setCaretPosition(chatDoc.getLength());
         } catch (BadLocationException e) { e.printStackTrace(); }
     }
 
     private void appendErrorMessage(String text) {
         try {
-            SimpleAttributeSet style = new SimpleAttributeSet();
-            StyleConstants.setForeground(style, RED_ERR);
-            StyleConstants.setFontFamily(style, "Monospaced");
-            StyleConstants.setFontSize(style, 12);
-            StyleConstants.setBold(style, true);
-
-            chatDoc.insertString(chatDoc.getLength(), "[!] " + text + "\n", style);
+            SimpleAttributeSet s = new SimpleAttributeSet();
+            StyleConstants.setForeground(s, RED_ERR);
+            StyleConstants.setBold(s, true);
+            StyleConstants.setFontFamily(s, "Monospaced");
+            StyleConstants.setFontSize(s, 12);
+            chatDoc.insertString(chatDoc.getLength(), "[!] " + text + "\n", s);
             chatPane.setCaretPosition(chatDoc.getLength());
         } catch (BadLocationException e) { e.printStackTrace(); }
     }
-
-    // ── Helpers ───────────────────────────────────────────────────────────────
 
     private JTextField hackerField(String placeholder) {
         JTextField f = new JTextField(10);
@@ -402,16 +356,10 @@ public class SwingChatView extends JFrame implements MessageContainer {
         f.setForeground(GREEN_DARK);
         f.addFocusListener(new FocusAdapter() {
             public void focusGained(FocusEvent e) {
-                if (f.getText().equals(placeholder)) {
-                    f.setText("");
-                    f.setForeground(GREEN_BRIGHT);
-                }
+                if (f.getText().equals(placeholder)) { f.setText(""); f.setForeground(GREEN_BRIGHT); }
             }
             public void focusLost(FocusEvent e) {
-                if (f.getText().isEmpty()) {
-                    f.setText(placeholder);
-                    f.setForeground(GREEN_DARK);
-                }
+                if (f.getText().isEmpty()) { f.setText(placeholder); f.setForeground(GREEN_DARK); }
             }
         });
         return f;
@@ -420,22 +368,19 @@ public class SwingChatView extends JFrame implements MessageContainer {
     private JLabel hackerLabel(String text) {
         JLabel l = new JLabel(text);
         l.setFont(FONT_MONO_SM);
-        l.setForeground(GREEN_DIM);
+        l.setForeground(GREEN_MED);
+        l.setBackground(BG_PANEL);
+        l.setOpaque(true);
         return l;
     }
 
-    /** Retorna o valor do campo ignorando o placeholder */
-    private String getFieldValue(JTextField field, String placeholder) {
-        String val = field.getText().trim();
-        return val.equals(placeholder) ? "" : val;
+    private String getVal(JTextField f, String placeholder) {
+        String v = f.getText().trim();
+        return v.equals(placeholder) ? "" : v;
     }
 
-    // ── Main ──────────────────────────────────────────────────────────────────
-
     public static void main(String[] args) {
-        try {
-            UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
-        } catch (Exception ignored) {}
+        try { UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName()); } catch (Exception ignored) {}
         SwingUtilities.invokeLater(SwingChatView::new);
     }
 }
